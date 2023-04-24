@@ -91,4 +91,7 @@ if __name__ == "__main__":
     # 1. init Q network and target network (see dqn/networks.py)
     # 2. init DQNAgent (see dqn/dqn_agent.py)
     # 3. train DQN agent with train_online(...)
+
+    Q = MLP(state_dim, num_actions)
+    Q_target = MLP(state_dim, num_actions)
  

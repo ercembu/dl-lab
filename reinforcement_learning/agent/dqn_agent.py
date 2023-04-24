@@ -59,6 +59,11 @@ class DQNAgent:
         #       2.2 update the Q network
         #       2.3 call soft update for target network
         #           soft_update(self.Q_target, self.Q, self.tau)
+        self.replay_buffer.add_transition(state, action, next_state, reward, terminal)
+
+        state_batch, action_batch, next_state_batch, reward_batch, done_batch = self.replay_buffer.next_batch(self.batch_size)
+        td_target = reward_batch + self.gamma * np.argmax(self.Q_target(next_state_batch))
+
 
     def act(self, state, deterministic):
         """
