@@ -9,6 +9,8 @@ from tensorboard_evaluation import *
 from agent.networks import MLP
 from utils import EpisodeStats
 
+from argparse import ArgumentParser
+
 
 def run_episode(env, agent, deterministic, do_training=True, rendering=False, max_timesteps=1000):
     """
@@ -43,13 +45,17 @@ def run_episode(env, agent, deterministic, do_training=True, rendering=False, ma
 
     return stats
 
-def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensorboard_dir="./tensorboard"):
+def train_online(env, agent, 
+        num_episodes, 
+        eval_cycle,
+        num_eval_episodes,
+        model_dir="./models_cartpole", tensorboard_dir="./tensorboard"):
     if not os.path.exists(model_dir):
         os.mkdir(model_dir)  
  
     print("... train agent")
 
-    tensorboard = Evaluation(os.path.join(tensorboard_dir, "train"), ["episode_reward", "a_0", "a_1"])
+    tensorboard = Evaluation(os.path.join(tensorboard_dir, "train"),"buluta" ,["episode_reward", "a_0", "a_1", "mean_episode_reward"])
 
     # training
     for i in range(num_episodes):
@@ -67,6 +73,13 @@ def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensor
         #       ...
         
         # store model.
+        if i % eval_cycle == 0:
+            rewards = []
+            for j in range(num_eval_episodes):
+                eval_stats = run_episode(env, agent, deterministic=True, do_training=False)
+                rewards.append(eval_stats.episode_reward)
+            tensorboard.write_episode_data(i, eval_dict={ "mean_episode_reward": np.mean(np.asarray(rewards))})
+
         if i % eval_cycle == 0 or i >= (num_episodes - 1):
             agent.save(os.path.join(model_dir, "dqn_agent.pt"))
    
@@ -75,6 +88,7 @@ def train_online(env, agent, num_episodes, model_dir="./models_cartpole", tensor
 
 if __name__ == "__main__":
 
+    num_episodes = 1000
     num_eval_episodes = 5   # evaluate on 5 episodes
     eval_cycle = 20         # evaluate every 10 episodes
 
@@ -94,4 +108,8 @@ if __name__ == "__main__":
 
     Q = MLP(state_dim, num_actions)
     Q_target = MLP(state_dim, num_actions)
+
+    dqn_agent = DQNAgent(Q, Q_target, num_actions)
+
+    train_online(env, dqn_agent, num_episodes, eval_cycle, num_eval_episodes)
  

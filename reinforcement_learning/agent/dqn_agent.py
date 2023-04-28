@@ -62,7 +62,21 @@ class DQNAgent:
         self.replay_buffer.add_transition(state, action, next_state, reward, terminal)
 
         state_batch, action_batch, next_state_batch, reward_batch, done_batch = self.replay_buffer.next_batch(self.batch_size)
-        td_target = reward_batch + self.gamma * np.argmax(self.Q_target(next_state_batch))
+        next_values = self.Q_target(torch.from_numpy(next_state_batch).cuda()).max(1)[0]
+
+        next_values[done_batch] = 0
+        td_target = torch.from_numpy(reward_batch).cuda() + self.gamma * next_values
+        
+
+        loss = self.loss_function(next_values, td_target.float())
+
+        self.optimizer.zero_grad()
+
+        loss.backward()
+
+        self.optimizer.step()
+
+        soft_update(self.Q_target, self.Q, self.tau)
 
 
     def act(self, state, deterministic):
@@ -76,16 +90,16 @@ class DQNAgent:
         """
         r = np.random.uniform()
         if deterministic or r > self.epsilon:
-            pass
             # TODO: take greedy action (argmax)
             # action_id = ...
+            res = self.Q(torch.from_numpy(state).cuda())
+            action_id = np.argmax(res.cpu().detach().numpy())
         else:
-            pass
             # TODO: sample random action
             # Hint for the exploration in CarRacing: sampling the action from a uniform distribution will probably not work. 
             # You can sample the agents actions with different probabilities (need to sum up to 1) so that the agent will prefer to accelerate or going straight.
             # To see how the agent explores, turn the rendering in the training on and look what the agent is doing.
-            # action_id = ...
+            action_id = np.random.choice(range(self.num_actions))
 
         return action_id
 
